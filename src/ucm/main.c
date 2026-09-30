@@ -570,6 +570,12 @@ static int execute_sysw(const char *sysw)
 	}
 	snprintf(path, sizeof(path), "%s/%s", e, s);
 
+	{ char *resolved = realpath(path, NULL); size_t rootlen = strlen(e);
+	  if (!resolved || strncmp(resolved, e, rootlen) != 0) {
+		free(resolved); free(s);
+		snd_error(UCM, "sysw path escapes sysfs root: '%s'", path);
+		return -EINVAL; } free(resolved); }
+
 	fd = open(path, O_WRONLY|O_CLOEXEC);
 	if (fd < 0) {
 		free(s);
@@ -625,6 +631,11 @@ static int execute_cfgsave(snd_use_case_mgr_t *uc_mgr, const char *filename)
 		}
 	}
 
+	{ const char *runtime = getenv("XDG_RUNTIME_DIR"); if (!runtime) runtime = "/tmp";
+	  char *resolved = realpath(file, NULL);
+	  if (!resolved || strncmp(resolved, runtime, strlen(runtime)) != 0) {
+		free(resolved); snd_error(UCM, "cfg-save path escapes runtime dir: '%s'", file);
+		return -EINVAL; } free(resolved); }
 	err = snd_output_stdio_open(&out, file, "w+");
 	if (err < 0) {
 		snd_error(UCM, "unable to open file '%s': %s", file, snd_strerror(err));
